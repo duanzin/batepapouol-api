@@ -102,31 +102,31 @@ app.post("/messages", async (req, res) => {
 });
 
 app.get("/messages", async (req, res) => {
-  const userexiste = await db
-    .collection("participants")
-    .findOne({ name: req.headers.user });
-  if (!userexiste) {
-    return res.sendStatus(422);
-  }
-
-  const user = req.headers.user;
   const limit = parseInt(req.query.limit);
-  let mensagens = [];
-  const msgs = db
-    .collection("messages")
-    .find({
-      $or: [{ from: user }, { to: user }, { to: "Todos" }],
-    })
-    .toArray();
+  const user = req.headers.user;
+  let msgs = await db.collection("messages").find().toArray();
 
-  mensagens = msgs;
-  if (!req.query.limit) {
-    return res.send(mensagens);
-  } else if (isNaN(limit) || limit < 1) {
+  msgs = msgs.filter((msg) => {
+    if (
+      msg.to === "Todos" ||
+      msg.to === user ||
+      (msg.type === "private_message" && msg.from === user)
+    ) {
+      return true;
+    }
+
+    return false;
+  });
+
+  if (!limit) {
+    return res.send(msgs);
+  }
+  if (limit < 1 || isNaN(limit)) {
     return res.sendStatus(422);
   }
-  mensagens = mensagens.slice(-limit);
-  res.send(mensagens);
+
+  msgs = msgs.slice(-limit);
+  res.send(msgs);
 });
 
 app.post("/status", async (req, res) => {
