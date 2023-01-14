@@ -52,7 +52,7 @@ app.post("/participants", async (req, res) => {
       to: "Todos",
       text: "entra na sala...",
       type: "status",
-      time: dayjs().format("HH:MM:SS"),
+      time: dayjs().format('HH:MM:SS'),
     });
 
     res.sendStatus(201);
@@ -72,11 +72,15 @@ app.post("/messages", async (req, res) => {
       .collection("participants")
       .findOne({ name: req.headers.user });
 
+    if (!userexiste || !req.headers.user) {
+      return res.sendStatus(422);
+    }
+
     const validation = messageSchema.validate(req.body, {
       abortEarly: true,
     });
 
-    if (!userexiste || validation.error) {
+    if (validation.error) {
       return res.status(422).send(validation.error.details);
     }
 
@@ -108,7 +112,7 @@ app.get("/messages", async (req, res) => {
   const user = req.headers.user;
   const limit = parseInt(req.query.limit);
 
-  if (!limit || limit === "string" || limit <= 0) {
+  if (!req.query.limit || limit === "string" || limit <= 0) {
     const mensagens = db
       .collection("messages")
       .find({
@@ -117,17 +121,17 @@ app.get("/messages", async (req, res) => {
       .toArray();
 
     return res.send(mensagens);
+  } else {
+    const mensagens = db
+      .collection("messages")
+      .find({
+        $or: [{ from: user }, { to: user }, { to: "Todos" }],
+      })
+      .limit(limit)
+      .toArray();
+
+    res.send(mensagens);
   }
-
-  const mensagens = db
-    .collection("messages")
-    .find({
-      $or: [{ from: user }, { to: user }, { to: "Todos" }],
-    })
-    .limit(limit)
-    .toArray();
-
-  res.send(mensagens);
 });
 
 app.post("/status", async (req, res) => {
@@ -145,7 +149,7 @@ app.post("/status", async (req, res) => {
       .collection("participants")
       .updateOne({ name: req.headers.user }, { $set: { lastStatus } });
 
-    if (atualizastatus.modifiedCount === 0){
+    if (atualizastatus.modifiedCount === 0) {
       return res.sendStatus(404);
     }
 
