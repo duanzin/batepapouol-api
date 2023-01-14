@@ -52,7 +52,7 @@ app.post("/participants", async (req, res) => {
       to: "Todos",
       text: "entra na sala...",
       type: "status",
-      time: dayjs().format('HH:MM:SS'),
+      time: dayjs(Date.now()).format("HH:MM:SS"),
     });
 
     res.sendStatus(201);
@@ -61,8 +61,8 @@ app.post("/participants", async (req, res) => {
   }
 });
 
-app.get("/participants", (req, res) => {
-  const participantes = db.collection("participants").find().toArray();
+app.get("/participants", async (req, res) => {
+  const participantes = await db.collection("participants").find().toArray();
   res.send(participantes);
 });
 
@@ -92,7 +92,7 @@ app.post("/messages", async (req, res) => {
       to: mensagem.to,
       text: mensagem.text,
       type: mensagem.type,
-      time: dayjs().format("HH:MM:SS"),
+      time: dayjs(Date.now()).format("HH:MM:SS"),
     });
 
     res.sendStatus(201);
@@ -111,27 +111,22 @@ app.get("/messages", async (req, res) => {
 
   const user = req.headers.user;
   const limit = parseInt(req.query.limit);
+  let mensagens = [];
+  const msgs = db
+    .collection("messages")
+    .find({
+      $or: [{ from: user }, { to: user }, { to: "Todos" }],
+    })
+    .toArray();
 
-  if (!req.query.limit || limit === "string" || limit <= 0) {
-    const mensagens = db
-      .collection("messages")
-      .find({
-        $or: [{ from: user }, { to: user }, { to: "Todos" }],
-      })
-      .toArray();
-
+  mensagens = msgs;
+  if (!req.query.limit) {
     return res.send(mensagens);
-  } else {
-    const mensagens = db
-      .collection("messages")
-      .find({
-        $or: [{ from: user }, { to: user }, { to: "Todos" }],
-      })
-      .limit(limit)
-      .toArray();
-
-    res.send(mensagens);
+  } else if (isNaN(limit) || limit < 1) {
+    return res.sendStatus(422);
   }
+  mensagens = mensagens.slice(-limit);
+  res.send(mensagens);
 });
 
 app.post("/status", async (req, res) => {
@@ -158,5 +153,26 @@ app.post("/status", async (req, res) => {
     return res.status(500).send(error.message);
   }
 });
+
+setInterval(async () => {
+  const temporemove = Date.now() - 10000;
+  let inativos = await db
+    .collection("participants")
+    .find({ lastStatus: { $lt: temporemove } })
+    .toArray();
+  for (let index = 0; index < inativos.length; index++) {
+    await db.collection("messages").insertOne({
+      from: inativos[i].name,
+      to: "Todos",
+      text: "sai da sala...",
+      type: "status",
+      time: dayjs(Date.now()).format("HH:MM:SS"),
+    });
+  }
+
+  await db
+    .collection("participants")
+    .deleteMany({ lastStatus: { $lt: temporemove } });
+}, 15000);
 
 app.listen(5000);
