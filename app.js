@@ -141,12 +141,13 @@ app.post("/status", async (req, res) => {
 
     const lastStatus = Date.now();
 
-    await db
+    const atualizastatus = await db
       .collection("participants")
       .updateOne({ name: req.headers.user }, { $set: { lastStatus } });
 
-    if (result.modifiedCount === 0)
+    if (atualizastatus.modifiedCount === 0){
       return res.sendStatus(404);
+    }
 
     res.sendStatus(200);
   } catch (error) {
