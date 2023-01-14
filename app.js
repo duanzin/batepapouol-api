@@ -52,7 +52,7 @@ app.post("/participants", async (req, res) => {
       to: "Todos",
       text: "entra na sala...",
       type: "status",
-      time: dayjs(Date.now()).format("HH:MM:SS"),
+      time: dayjs(Date.now()).format("hh:mm:ss"),
     });
 
     res.sendStatus(201);
@@ -92,7 +92,7 @@ app.post("/messages", async (req, res) => {
       to: mensagem.to,
       text: mensagem.text,
       type: mensagem.type,
-      time: dayjs(Date.now()).format("HH:MM:SS"),
+      time: dayjs(Date.now()).format("hh:mm:ss"),
     });
 
     res.sendStatus(201);
@@ -155,24 +155,22 @@ app.post("/status", async (req, res) => {
 });
 
 setInterval(async () => {
-  const temporemove = Date.now() - 10000;
-  let inativos = await db
-    .collection("participants")
-    .find({ lastStatus: { $lt: temporemove } })
-    .toArray();
-  for (let index = 0; index < inativos.length; index++) {
-    await db.collection("messages").insertOne({
-      from: inativos[i].name,
-      to: "Todos",
-      text: "sai da sala...",
-      type: "status",
-      time: dayjs(Date.now()).format("HH:MM:SS"),
-    });
-  }
+  const tempo = Date.now() - 10000;
+  const usuarios = await db.collection("participants").find().toArray();
 
-  await db
-    .collection("participants")
-    .deleteMany({ lastStatus: { $lt: temporemove } });
+  usuarios.forEach(async (usuario) => {
+    if (usuario.lastStatus < tempo) {
+      await db.collection("participants").deleteOne({ name: usuario.name });
+
+      await db.collection("messages").insertOne({
+        from: usuario.name,
+        to: "Todos",
+        text: "sai da sala...",
+        type: "status",
+        time: dayjs(Date.now()).format("hh:mm:ss"),
+      });
+    }
+  });
 }, 15000);
 
 app.listen(5000);
